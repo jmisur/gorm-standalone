@@ -1,0 +1,77 @@
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:gorm="http://grails.org/schema/gorm" xmlns:util="http://www.springframework.org/schema/util" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.grails.org/schema/context http://grails.org/schema/context/grails-context.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd
+		http://grails.org/schema/gorm http://grails.org/schema/gorm/gorm.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<bean id="pluginManager" class="org.codehaus.groovy.grails.plugins.GrailsPluginManagerFactoryBean">
+		<property name="grailsDescriptor" value="classpath:org/grails/gorm/grails.xml" />
+		<property name="application" ref="grailsApplication" />
+	</bean>
+
+	<bean id="grailsConfigurator" class="org.codehaus.groovy.grails.commons.spring.GrailsRuntimeConfigurator" init-method="configure" depends-on="pluginManager">
+		<constructor-arg>
+			<ref bean="grailsApplication" />
+		</constructor-arg>
+		<property name="pluginManager" ref="pluginManager" />
+	</bean>
+
+	<bean id="grailsResourceLoader" class="org.codehaus.groovy.grails.commons.GrailsResourceLoaderFactoryBean" />
+
+	<bean id="eventTriggeringInterceptor" class="org.codehaus.groovy.grails.orm.hibernate.support.ClosureEventTriggeringInterceptor" />
+
+	<gorm:sessionFactory base-package="org.grails.gorm.domain" data-source-ref="dataSource" message-source-ref="messageSource">
+		<property name="hibernateProperties">
+			<util:map>
+				<entry key="hibernate.hbm2ddl.auto" value="create-drop" />
+				<entry key="hibernate.cache.use_query_cache" value="false" />
+				<entry key="hibernate.cache.use_second_level_cache" value="false" />
+				<entry key="hibernate.format_sql" value="true" />
+				<entry key="hibernate.show_sql" value="false" />
+				<entry key="hibernate.cache.provider_class" value="net.sf.ehcache.hibernate.EhCacheProvider" />
+			</util:map>
+		</property>
+		<property name="eventListeners">
+			<util:map>
+				<entry key="flush">
+					<bean class="org.codehaus.groovy.grails.orm.hibernate.events.PatchedDefaultFlushEventListener" />
+				</entry>
+				<entry key="pre-load" value-ref="eventTriggeringInterceptor" />
+				<entry key="post-load" value-ref="eventTriggeringInterceptor" />
+				<entry key="save" value-ref="eventTriggeringInterceptor" />
+				<entry key="save-update" value-ref="eventTriggeringInterceptor" />
+				<entry key="pre-insert" value-ref="eventTriggeringInterceptor" />
+				<entry key="post-insert" value-ref="eventTriggeringInterceptor" />
+				<entry key="pre-update" value-ref="eventTriggeringInterceptor" />
+				<entry key="post-update" value-ref="eventTriggeringInterceptor" />
+				<entry key="pre-delete" value-ref="eventTriggeringInterceptor" />
+				<entry key="post-delete" value-ref="eventTriggeringInterceptor" />
+			</util:map>
+		</property>
+	</gorm:sessionFactory>
+
+	<bean id="grailsDomainClassMappingContext" class="org.codehaus.groovy.grails.domain.GrailsDomainClassMappingContext">
+		<constructor-arg name="grailsApplication" ref="grailsApplication" />
+	</bean>
+
+	<bean id="hibernateDatastore" class="org.grails.gorm.HibernateDatastoreFactoryBean">
+		<property name="sessionFactory" ref="sessionFactory" />
+		<property name="grailsApplication" ref="grailsApplication" />
+		<property name="mappingContext" ref="grailsDomainClassMappingContext" />
+		<property name="interceptor" ref="eventTriggeringInterceptor" />
+	</bean>
+
+	<bean id="gormEnhancingPostProcessor" class="org.grails.gorm.GormEnhancingBeanPostProcessor">
+		<property name="sessionFactory" ref="sessionFactory" />
+		<property name="application" ref="grailsApplication" />
+	</bean>
+
+	<bean id="eventInterceptor" class="org.codehaus.groovy.grails.orm.hibernate.EventTriggeringInterceptor">
+		<constructor-arg index="0" ref="hibernateDatastore" />
+		<constructor-arg index="1" value="#{grailsApplication.config}" />
+	</bean>
+
+</beans>

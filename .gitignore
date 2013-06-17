@@ -1,0 +1,7 @@
+.classpath
+.project
+.springBeans
+.groovy
+.settings
+target
+*~
